@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+:root {
+  --background: #000000;
+  --foreground: #ededed;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-serif: 'Morris Roman', 'Georgia', serif;
+  --font-sans: 'Inter', 'Segoe UI', sans-serif;
+  --font-morris: 'Morris Roman', serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Morris Roman', 'Georgia', serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Morris Roman', serif;
+  letter-spacing: 0.1em;
+}
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(8px); }
+  50% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes pulse-boho {
+  0%, 100% { fill: #ffcba4; filter: drop-shadow(0 0 10px #ffcba4); }
+  33% { fill: #ff7f50; filter: drop-shadow(0 0 15px #ff7f50); }
+  66% { fill: #98ff98; filter: drop-shadow(0 0 10px #98ff98); }
+}
+
+@utility animate-shake {
+  animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@utility animate-boho {
+  animation: pulse-boho 6s infinite ease-in-out;
+}

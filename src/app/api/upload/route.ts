@@ -68,11 +68,11 @@ export async function POST(req: NextRequest) {
     const response = await ai.models.generateContent({
       model: "gemini-flash-lite-latest",
       contents: [
-        { text: `Analyze this document. Identify the overarching Subject (e.g. Biology, Math, History, Physics). Then, identify the top ${safeQuantity} distinct Core Concepts. Generate exactly 1 Multiple Choice Question for each concept (total exactly ${safeQuantity} MCQs). Generate all questions and answer options precisely in ${targetLanguage}, regardless of the language of the provided text. Remember: keep technical terms in the source language if there isn't a direct translation, or provide the translation with the original term in parentheses.` },
+        { text: `Analyze this document. Identify the overarching Subject (e.g. Biology, Math, History, Physics). Then, identify the top ${safeQuantity} distinct Core Concepts. Generate exactly 1 Multiple Choice Question for each concept (total exactly ${safeQuantity} MCQs). Generate all questions and answer options precisely in ${targetLanguage}, regardless of the language of the provided text. Remember: keep technical terms in the source language if there isn't a direct translation, or provide the translation with the original term in parentheses. Assign each question a spellType (Fire, Ice, Holy, Dark, or Grass).` },
         { fileData: { fileUri: uploadResult.uri, mimeType: uploadResult.mimeType } }
       ],
       config: {
-        systemInstruction: "You are an Archivist wizard capable of reading any discipline. Classify the discipline and extract pure, conceptual MCQs.",
+        systemInstruction: "You are an Archivist wizard capable of reading any discipline. Classify the discipline and extract pure, conceptual MCQs. Ensure each spell has a spellType attribute.",
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -91,9 +91,10 @@ export async function POST(req: NextRequest) {
                   C: { type: Type.STRING },
                   D: { type: Type.STRING },
                   answer: { type: Type.STRING, description: "Correct letter A, B, C, or D" },
-                  difficulty: { type: Type.INTEGER, description: "Assign a difficulty scale from 1 (easy baseline) to 5 (extremely complex nuance)." }
+                  difficulty: { type: Type.INTEGER, description: "Assign a difficulty scale from 1 (easy baseline) to 5 (extremely complex nuance)." },
+                  spellType: { type: Type.STRING, description: "Must be: Fire, Ice, Holy, Dark, or Grass" }
                 },
-                required: ["question", "A", "B", "C", "D", "answer", "difficulty"]
+                required: ["question", "A", "B", "C", "D", "answer", "difficulty", "spellType"]
               }
             }
           },
@@ -143,6 +144,18 @@ export async function POST(req: NextRequest) {
       subject: subject,
       spells: spells,
       threshold: threshold,
+      playerHp: 100,
+      enemyHp: 100,
+      maxHp: 100,
+      hp: 100,
+      playerHand: [],
+      activeEffects: {
+        fireTurnsLeft: 0,
+        iceDefShredActive: false,
+        enemyPreparingStrike: false,
+        darkWeakenActive: false,
+        grassBoostActive: false,
+      },
       timestamp: Date.now()
     }, { merge: true });
 

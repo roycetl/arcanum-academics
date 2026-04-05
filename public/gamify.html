@@ -1000,92 +1000,40 @@
     <div class="loading-text">Extracting Lore...</div>
   </div>
 
-  <div id="setup-screen" class="screen">
+    <div id="setup-screen" class="screen">
     <div style="text-align:center;">
-      <div class="setup-title">Studify</div>
-      <div class="setup-subtitle">Turn your lecture notes into legendary loot</div>
+      <div class="setup-title">Trial of the Tome</div>
+      <div class="setup-subtitle">Surrender your exam  the Archivist will do the rest</div>
     </div>
 
-    <div class="setup-panels">
+    <div style="display:flex; flex-direction:column; align-items:center; width:100%; max-width:600px; gap:20px;">
 
-      <div class="setup-panel" id="panel-questions">
-        <div class="panel-title">📜 Tomes (Questions)</div>
-        <div class="panel-note">Upload a PDF/DOCX — questions <em>and</em> their options will be extracted
-          automatically.</div>
+      <div class="setup-panel" style="width:100%;">
+        <div class="panel-title">&#x1F4DC; Upload Your Exam</div>
+        <div class="panel-note">Drop a <strong>.pdf</strong> file  the AI will extract all questions, options, and determine the correct answers automatically.</div>
 
         <div class="dropzone" id="q-dropzone">
-          <div class="dropzone-icon">📓</div>
-          <div>Drop <strong>.pdf</strong> or <strong>.docx</strong> here</div>
+          <div class="dropzone-icon">&#x1F5C2;&#xFE0F;</div>
+          <div>Drop <strong>.pdf</strong> here</div>
           <div style="font-size:.8rem;margin-top:6px;color:#8b9bb4">click to browse archives</div>
-          <input type="file" id="q-file" accept=".pdf,.docx" aria-label="Upload questions file">
-        </div>
-
-        <div style="text-align:center;color:#5c677d;font-size:.8rem; font-style:italic;">— or inscribe below —</div>
-
-        <textarea class="item-textarea" id="q-textarea" rows="3"
-          placeholder="Type questions (numbered, one per line):&#10;1. What is the primary function of Python's __init__ method?&#10;2. Define encapsulation."></textarea>
-        <div class="add-row">
-          <button class="add-btn" id="q-add-btn">＋ Add Question(s)</button>
-          <button class="add-btn" id="q-clear-btn" style="margin-left:auto;opacity:.7">🗑 Clear</button>
+          <input type="file" id="q-file" accept=".pdf" aria-label="Upload exam file">
         </div>
 
         <div id="q-msg" class="msg"></div>
-        <div style="color:#a0aabf;font-size:.85rem; font-family: var(--font-serif);">Questions: <strong id="q-count"
-            style="color:var(--gold)">0</strong></div>
-        <div class="item-list" id="q-list">
-          <div class="list-empty">The archive is empty</div>
-        </div>
-      </div>
-
-      <div class="setup-panel" id="panel-options">
-        <div class="panel-title">🔮 Illusions (Options)</div>
-        <div class="panel-note">Auto-populated from the Tome above. To add manually, paste options in groups — one blank
-          line between each question's set.</div>
-
-        <textarea class="item-textarea" id="o-textarea" rows="4"
-          placeholder="a. Constructor&#10;b. Destructor&#10;c. Initialize Object&#10;&#10;a. Option A for Q2&#10;b. Option B for Q2"></textarea>
-        <div class="add-row">
-          <button class="add-btn" id="o-add-btn">＋ Set Options</button>
-          <button class="add-btn" id="o-clear-btn" style="margin-left:auto;opacity:.7">🗑 Clear</button>
-        </div>
-
-        <div id="o-msg" class="msg"></div>
-        <div style="color:#a0aabf;font-size:.85rem; font-family: var(--font-serif);">Questions with options: <strong
-            id="o-count" style="color:var(--gold)">0</strong></div>
-        <div class="item-list" id="o-list">
-          <div class="list-empty">No illusions conjured yet</div>
-        </div>
-        <button class="add-btn" id="manual-opts-btn" style="width:100%;margin-top:4px;">✏ Manually Change Option
-          Content</button>
-      </div>
-
-      <div class="setup-panel disabled" id="panel-answers">
-        <div class="panel-title">✅ Absolute Truth (Answers)</div>
-        <div class="panel-note" id="a-panel-note">Enter one answer per line using the option letter (e.g. "a", "c"). You
-          need exactly <strong id="a-required" style="color:var(--gold)">?</strong> truths.</div>
-
-        <textarea class="item-textarea" id="a-textarea" rows="4" placeholder="c&#10;a&#10;b&#10;d" disabled></textarea>
-        <div class="add-row">
-          <button class="add-btn" id="a-add-btn" disabled>＋ Seal Truths</button>
-          <button class="add-btn" id="a-clear-btn" style="margin-left:auto;opacity:.7" disabled>🗑 Clear</button>
-        </div>
-
-        <div id="a-msg" class="msg"></div>
-        <div style="color:#a0aabf;font-size:.85rem; font-family: var(--font-serif);">Truths: <strong id="a-count"
-            style="color:var(--gold)">0</strong> / <strong id="a-total" style="color:var(--gold)">0</strong></div>
-        <div class="item-list" id="a-list">
-          <div class="list-empty">Require Tomes & Illusions first</div>
+        <div id="file-status" style="color:#a0aabf;font-size:.85rem; font-family: var(--font-serif); display:none;">
+          Loaded: <strong id="q-filename" style="color:var(--gold)">&#x2014;</strong> &nbsp;&middot;&nbsp;
+          <strong id="q-count" style="color:var(--gold)">0</strong> questions extracted
         </div>
       </div>
 
     </div>
+
     <div class="setup-footer">
       <div id="start-msg" class="msg" style="text-align:center;max-width:520px;"></div>
-      <button class="start-btn" id="start-btn" disabled>Initiate Encounter</button>
-      <div class="start-note">Need ≥ 2 questions with options and matching correct answers</div>
+      <button class="start-btn" id="start-btn" disabled>Enter the Trial</button>
+      <div class="start-note">Upload a PDF exam to begin</div>
     </div>
   </div>
-
 
   <div id="game-screen" class="screen">
     <div class="game-hud">
@@ -1160,15 +1108,6 @@
       <button class="play-again-btn" id="play-again-btn">Start New Encounter</button>
     </div>
   </div>
-
-
-  <!-- Manual Options Modal -->
-  <div id="manual-opts-modal"
-    style="display:none; position:fixed; inset:0; z-index:300; background:rgba(0,0,0,0.75); align-items:center; justify-content:center; backdrop-filter:blur(4px);">
-    <div
-      style="background:var(--panel-bg); border:2px solid var(--gold); border-radius:6px; padding:24px; max-width:520px; width:90%; display:flex; flex-direction:column; gap:14px; box-shadow:0 10px 40px rgba(0,0,0,0.9);">
-      <div style="font-family:var(--font-serif); color:var(--gold); font-size:1.1rem; letter-spacing:1px;">✏ Manually
-        Set Options</div>
       <div style="display:flex; flex-direction:column; gap:6px;">
         <label style="color:var(--parchment); font-size:.85rem;">Select Question:</label>
         <select id="manual-q-select"

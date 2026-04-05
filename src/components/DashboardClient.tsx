@@ -122,7 +122,7 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
   const [showRetreatModal, setShowRetreatModal] = useState(false);
   const [currentView, setCurrentView] = useState<'forge' | 'analytics'>('forge');
 
-  // New POV Battle State
+  // POV Battle State
   const [battlePhase, setBattlePhase] = useState<'QUESTIONING' | 'BATTLING' | 'FAILED' | 'VICTORY'>('QUESTIONING');
   const [currentSpellIndex, setCurrentSpellIndex] = useState(0);
   const [wizardHP, setWizardHP] = useState(100);
@@ -157,8 +157,6 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
             setWizardHP(100);
             setGoblinHP(100);
             setLastAction(null);
-            
-            // Randomize spells array here directly before saving local boss
             if (data.spells && Array.isArray(data.spells)) {
                 data.spells = [...data.spells].sort(() => Math.random() - 0.5);
             }
@@ -172,12 +170,10 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
       console.warn("Firestore sync failed.", error);
       setSynced(false);
     });
-
     return () => unsub();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boss.status]); 
 
-  // Auto-dismiss toast
   useEffect(() => {
     if (toastMessage) {
       const timer = setTimeout(() => setToastMessage(null), 6000);
@@ -185,7 +181,6 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
     }
   }, [toastMessage]);
 
-  // Mana Regeneration Countdown
   useEffect(() => {
     let timer: any;
     if (cooldownSeconds > 0) {
@@ -199,7 +194,7 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
     if (!file) return;
 
     setUploading(true);
-    setToastMessage(null); // Clear previous toasts
+    setToastMessage(null);
     const formData = new FormData();
     formData.append("file", file);
     formData.append("quantity", String(ritualConfig.quantity));
@@ -234,10 +229,8 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
     const accuracy = totalSpells > 0 ? (finalCorrect / totalSpells) : 0;
     const requiredAccuracy = (boss.threshold || ritualConfig.threshold) / 100;
     const elapsedSeconds = Math.floor((Date.now() - raidStats.startTime) / 1000);
-
     const isWin = accuracy >= requiredAccuracy;
     
-    // Save to study logs
     try {
       await addDoc(collection(db, "study_logs"), {
         subject: boss.subject || "Unknown",
@@ -247,7 +240,6 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
         win: isWin,
         timestamp: Date.now()
       });
-      // Delay unmount
       setTimeout(async () => {
         await setDoc(doc(db, "gameData", "boss"), { status: 'idle', spells: [] }, { merge: true });
         setBattleLog([isWin ? `Boss Vanquished! Accuracy: ${Math.round(accuracy * 100)}% | Mastery: ${finalMastery}` : `Spell Fizzle! Accuracy: ${Math.round(accuracy * 100)}%. The Arcane Threshold was not met.`]);
@@ -279,8 +271,10 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
       finalGoblinHP = Math.max(0, goblinHP - (100 / (boss.spells?.length || 5)));
       setGoblinHP(finalGoblinHP);
       newLog = `Royce unraveled the concept! It's super effective! +${difficultyVal * 100} Mastery.`;
+      setIsLightning(true);
+      setTimeout(() => setIsLightning(false), 800);
     } else {
-      finalWizardHP = Math.max(0, wizardHP - 34); // ~3 mistakes allowed
+      finalWizardHP = Math.max(0, wizardHP - 34);
       setWizardHP(finalWizardHP);
       newLog = `The Goblin uses 'Mental Block'! Royce chose poorly. The Wizard takes damage!`;
       setIsShaking(true);
@@ -289,16 +283,13 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
 
     setBattleLog(prev => [newLog, ...prev].slice(0, 6));
 
-    // Execute Firebase stat merge silently in background so UI doesn't stall
     try {
       await setDoc(doc(db, "gameData", "boss"), { hp: boss.hp - (isCorrect ? 1000 : -500) }, { merge: true });
     } catch (err) {}
 
-    // 2.5 second animation timeout
     setTimeout(async () => {
        if (finalWizardHP <= 0) {
           setBattlePhase('FAILED');
-          // Game halted. Awaiting Retry or Return interaction.
        } else if (finalGoblinHP <= 0 || newAnswered >= (boss.spells?.length || ritualConfig.quantity)) {
           setBattlePhase('VICTORY');
           finalizeRaid(newAnswered, newCorrect, newMastery);
@@ -318,8 +309,6 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
      setLastAction(null);
      setRaidStats({ startTime: Date.now(), answered: 0, correct: 0, mastery: 0 });
      setBattleLog(["The Grimoire opens once more. Second chances are rare..."]);
-     
-     // Reshuffle existing spells
      if (boss.spells && Array.isArray(boss.spells)) {
          const shuffled = [...boss.spells].sort(() => Math.random() - 0.5);
          setBoss({...boss, spells: shuffled});
@@ -366,7 +355,7 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
         )}
       </AnimatePresence>
 
-      {/* The Mana Well (Rate Limit Cooldown UI) */}
+      {/* Mana Well (Rate Limit Cooldown UI) */}
       <AnimatePresence>
         {cooldownSeconds > 0 && (
           <motion.div
@@ -393,7 +382,7 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
         )}
       </AnimatePresence>
 
-      {/* Top Application Navigation */}
+      {/* Top Navigation */}
       <nav className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-2 z-50 bg-black/80 p-2 rounded-full border border-emerald-950/50 backdrop-blur-md">
         <button onClick={() => setCurrentView('forge')} className={`flex items-center gap-2 px-6 py-2 rounded-full font-serif tracking-widest uppercase text-xs transition-all duration-300 ${currentView === 'forge' ? 'bg-emerald-900/40 text-[#ffcba4] border border-[#ff7f50]/40 shadow-[0_0_20px_-5px_rgba(255,127,80,0.4)]' : 'text-emerald-700 hover:text-[#98ff98]'}`}>
           <Swords size={16} /> The Forge
@@ -460,8 +449,6 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-8 h-16 bg-white/30 blur-md rounded-full" />
               </motion.div>
             </div>
-            
-            {/* Boss HUD Info */}
             <div className="flex w-full max-w-3xl justify-between px-2 font-mono tracking-widest font-bold">
               <span className="text-red-400">HP // {boss.hp}</span>
               {boss.status === "battle_active" && (
@@ -503,11 +490,9 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                    </div>
                 </div>
 
-                {/* THE VOID / STAGE */}
                 <div className="absolute inset-0 bg-black z-0 pointer-events-none" />
 
-                {/* THE COMBATANTS */}
-                {/* 1. Unsaturated Pink Goblin (Top Center) */}
+                {/* Goblin */}
                 <motion.div 
                   className="absolute top-[10%] left-1/2 -translate-x-1/2 z-10 drop-shadow-[0_0_20px_rgba(232,165,184,0.3)]"
                   animate={
@@ -531,7 +516,7 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                    </svg>
                 </motion.div>
 
-                {/* 2. Wizard POV Hands (Bottom) */}
+                {/* Wizard Hands */}
                 <div className="absolute bottom-0 left-8 z-10 drop-shadow-[0_0_30px_rgba(16,185,129,0.3)]">
                    <motion.svg width="250" height="300" viewBox="0 0 100 100" animate={{ y: [0, 15, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}>
                       <path d="M10 90 L90 90 L80 50 L20 50 Z" fill="#2d1a11" />
@@ -542,6 +527,7 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                    </motion.svg>
                 </div>
                 
+                {/* Staff */}
                 <div className="absolute bottom-[-50px] right-8 z-10 origin-bottom">
                    <motion.svg width="200" height="600" viewBox="0 0 400 400" animate={ battlePhase === 'BATTLING' && lastAction === 'CORRECT' ? { rotate: [0, -20, 0], y: [0, -80, 0] } : { y: [0, 20, 0] } } transition={ battlePhase === 'BATTLING' ? { duration: 0.5 } : { duration: 3.5, repeat: Infinity, ease: "easeInOut" }}>
                       <path d="M180 400 Q190 200 200 100" stroke="#1c0f0a" strokeWidth="60" fill="none" strokeLinecap="round" />
@@ -551,7 +537,7 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                    </motion.svg>
                 </div>
 
-                {/* 3. The Projectile (Only rendered during CORRRECT hit) */}
+                {/* Projectile */}
                 <AnimatePresence>
                    {battlePhase === 'BATTLING' && lastAction === 'CORRECT' && (
                       <motion.div
@@ -563,7 +549,7 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                    )}
                 </AnimatePresence>
 
-                {/* THE CARD INTERFACE */}
+                {/* Spell Card Interface */}
                 <AnimatePresence>
                   {battlePhase === 'QUESTIONING' && boss.spells && boss.spells[currentSpellIndex] && (
                     <motion.div 
@@ -582,7 +568,6 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                         <p className="text-white font-serif text-2xl leading-relaxed text-center z-10 whitespace-pre-wrap drop-shadow-md">
                            {boss.spells[currentSpellIndex].question}
                         </p>
-                        
                         <div className="grid grid-cols-1 gap-4 z-10 w-full mt-4">
                           {["A", "B", "C", "D"].map((opt) => (
                             <button key={opt} onClick={() => handleAttack(boss.spells[currentSpellIndex], opt)} className="w-full text-left p-5 rounded-2xl transition-all duration-300 border backdrop-blur-sm relative overflow-hidden bg-black border-emerald-900/50 hover:border-emerald-400 hover:bg-emerald-900/30 group/btn shadow-inner">
@@ -596,14 +581,14 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                   )}
                 </AnimatePresence>
                 
-                {/* BLUR OVERLAY WHEN CARD IS OPEN */}
+                {/* Blur overlay when card open */}
                 <AnimatePresence>
                    {battlePhase === 'QUESTIONING' && (
                       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-30 bg-black/80 backdrop-blur-[6px] pointer-events-none" />
                    )}
                 </AnimatePresence>
                 
-                {/* THE "QUEST FAILED" OVERLAY */}
+                {/* Quest Failed Overlay */}
                 <AnimatePresence>
                    {battlePhase === 'FAILED' && (
                       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center p-8">
@@ -612,21 +597,16 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                                <h1 className="text-5xl font-morris tracking-widest text-[#ff7f50] drop-shadow-[0_0_10px_rgba(255,127,80,0.8)]">QUEST FAILED</h1>
                             </div>
                             <p className="text-emerald-400 font-serif text-lg text-center font-bold px-4">Your life force has been depleted. The Goblin mocks your attempt at mastery.</p>
-                            
                             <div className="flex flex-col w-full gap-4 mt-8 px-8">
-                               <button onClick={handleRetryBattle} className="w-full py-4 text-emerald-100 bg-emerald-950/40 border border-emerald-500 rounded-xl hover:bg-emerald-900/60 transition-colors font-serif uppercase tracking-widest text-sm shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]">
-                                  [ RETRY RITUAL ]
-                               </button>
-                               <button onClick={handleReturnToMenu} className="w-full py-4 text-zinc-400 bg-black border border-emerald-900/40 rounded-xl hover:text-emerald-400 hover:border-emerald-700 transition-colors font-serif uppercase tracking-widest text-sm">
-                                  [ RETURN TO MENU ]
-                               </button>
+                               <button onClick={handleRetryBattle} className="w-full py-4 text-emerald-100 bg-emerald-950/40 border border-emerald-500 rounded-xl hover:bg-emerald-900/60 transition-colors font-serif uppercase tracking-widest text-sm shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]">[ RETRY RITUAL ]</button>
+                               <button onClick={handleReturnToMenu} className="w-full py-4 text-zinc-400 bg-black border border-emerald-900/40 rounded-xl hover:text-emerald-400 hover:border-emerald-700 transition-colors font-serif uppercase tracking-widest text-sm">[ RETURN TO MENU ]</button>
                             </div>
                          </motion.div>
                       </motion.div>
                    )}
                 </AnimatePresence>
 
-                {/* THE "VICTORY" OVERLAY */}
+                {/* Victory Overlay */}
                 <AnimatePresence>
                    {battlePhase === 'VICTORY' && (
                       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-[100] bg-[#050f0a]/95 flex flex-col items-center justify-center p-8 backdrop-blur-sm">
@@ -635,11 +615,8 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                                <h1 className="text-5xl font-morris tracking-widest text-[#98ff98] drop-shadow-[0_0_30px_rgba(152,255,152,0.8)]">SACRIFICE ACCEPTED</h1>
                             </div>
                             <p className="text-emerald-100 font-serif text-lg text-center font-bold px-4">The grimoire yields its secrets. You have prevailed!</p>
-                            
                             <div className="flex flex-col w-full gap-4 mt-8 px-8">
-                               <button onClick={handleReturnToMenu} className="w-full py-4 text-[#050a07] font-bold bg-[#98ff98] border border-[#98ff98] rounded-xl hover:bg-emerald-400 transition-colors font-serif uppercase tracking-widest text-sm shadow-[0_0_40px_rgba(152,255,152,0.5)]">
-                                  [ RETURN TO MENU ]
-                               </button>
+                               <button onClick={handleReturnToMenu} className="w-full py-4 text-[#050a07] font-bold bg-[#98ff98] border border-[#98ff98] rounded-xl hover:bg-emerald-400 transition-colors font-serif uppercase tracking-widest text-sm shadow-[0_0_40px_rgba(152,255,152,0.5)]">[ RETURN TO MENU ]</button>
                             </div>
                          </motion.div>
                       </motion.div>
@@ -652,13 +629,13 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                 exit={{ opacity: 0, y: -20 }}
                 className="flex flex-col items-center gap-8 w-full max-w-lg z-30"
               >
-                {/* The Ritual Configurator UI */}
+                {/* Ritual Configurator */}
                 <div className="bg-[#050f0a]/60 p-8 rounded-3xl border border-emerald-500/50 w-full flex flex-col gap-8 shadow-[0_0_30px_-5px_rgba(16,185,129,0.3)] backdrop-blur-xl">
                   <div className="text-white font-morris tracking-widest text-2xl uppercase text-center flex items-center justify-center gap-3">
                     <ScanEye className="text-emerald-400 w-6 h-6 drop-shadow-[0_0_10px_rgba(16,185,129,0.8)]"/> THE RITUAL SETTINGS
                   </div>
                   
-                  {/* Target Language Dropdown */}
+                  {/* Language */}
                   <div className="flex flex-col gap-3">
                     <label className="text-sm font-serif italic text-white tracking-widest pl-1 drop-shadow-md">Incantation Language</label>
                     <div className="relative w-full">
@@ -677,12 +654,12 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                     </div>
                   </div>
 
+                  {/* Quantity */}
                   <div className="flex flex-col gap-3">
                     <label className="text-sm font-serif italic text-white tracking-widest pl-1 drop-shadow-md">Question Quantity</label>
                     <div className="relative w-full">
                       <input 
-                        type="number" 
-                        min="1" 
+                        type="number" min="1" 
                         value={ritualConfig.quantity === 0 ? '' : ritualConfig.quantity} 
                         onChange={(e) => {
                           const val = parseInt(e.target.value);
@@ -690,19 +667,16 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                         }} 
                         className="w-full bg-[#030a06] border border-emerald-900/50 rounded-xl py-4 px-5 text-[#98ff98] font-serif hover:border-emerald-500/80 focus:outline-none focus:border-emerald-500 focus:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all shadow-inner"
                       />
-                      <span className="absolute right-5 top-1/2 -translate-y-1/2 text-emerald-700 font-serif italic uppercase text-xs tracking-widest pointer-events-none">
-                        [ Spells ]
-                      </span>
+                      <span className="absolute right-5 top-1/2 -translate-y-1/2 text-emerald-700 font-serif italic uppercase text-xs tracking-widest pointer-events-none">[ Spells ]</span>
                     </div>
                   </div>
 
+                  {/* Threshold */}
                   <div className="flex flex-col gap-3">
                     <div className="flex justify-between items-end pl-1">
                       <label className="text-sm font-serif italic text-white tracking-widest drop-shadow-md">Arcane Threshold</label>
                       <span className="text-sm font-serif italic text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]">{ritualConfig.threshold}% Target Accuracy</span>
                     </div>
-                    
-                    {/* Preset Toggle Group */}
                     <div className="grid grid-cols-5 gap-2 w-full mt-1">
                       {PRESETS.map((preset) => (
                         <button 
@@ -721,7 +695,6 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                         </button>
                       ))}
                     </div>
-
                     <div className={`transition-opacity duration-300 ${ritualConfig.difficulty === 'custom' ? 'opacity-100 mt-4' : 'opacity-50 pointer-events-none'}`}>
                         <input 
                            type="range" min="0" max="100" step="1" 
@@ -733,6 +706,7 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                   </div>
                 </div>
 
+                {/* Upload & Gamify Buttons */}
                 <div className="flex flex-col items-center gap-6 p-8 bg-[#030a06]/80 rounded-3xl border border-emerald-900/30 hover:bg-[#07170a]/90 transition-all backdrop-blur-sm w-full">
                   <button 
                     onClick={() => fileInputRef.current?.click()}
@@ -743,6 +717,16 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                     <Flame className={`w-8 h-8 text-emerald-400 ${uploading ? 'animate-pulse text-[#ff7f50]' : 'group-hover:text-[#ffcba4] transition-colors duration-500'}`} />
                     <span className="text-md">{uploading ? "Forging..." : cooldownSeconds > 0 ? "Gathering Arcane Energy..." : "The Sacrifice"}</span>
                     {!cooldownSeconds && !uploading && <Upload className={`w-6 h-6 text-emerald-500 group-hover:-translate-y-1 group-hover:text-[#ffcba4] transition-all`} />}
+                  </button>
+
+                  {/* Gamify / Upload Exam Paper button — from me's repo */}
+                  <button 
+                    onClick={() => window.location.href='/api/gamify'}
+                    className="group relative flex items-center justify-center gap-4 px-12 py-5 w-full bg-gradient-to-b from-indigo-900/50 to-black hover:from-indigo-800/80 hover:to-black active:from-indigo-950 active:to-black rounded-full border border-indigo-900 text-indigo-100 uppercase tracking-[0.3em] font-black transition-all duration-500 shadow-[0_0_30px_-5px_rgba(79,70,229,0.2)] overflow-hidden font-serif"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000" />
+                    <BookOpen className="w-7 h-7 text-indigo-400 group-hover:text-indigo-300 transition-colors" />
+                    <span className="text-md">Upload Exam Paper</span>
                   </button>
                   
                   <p className="text-[#a7f3d0] font-serif italic text-sm tracking-widest text-center max-w-md drop-shadow-md">
@@ -756,7 +740,7 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
         </main>
       )}
 
-      {/* Battle Log Nexus */}
+      {/* Battle Log */}
       <div className="fixed bottom-0 left-0 w-full bg-[#020503]/95 backdrop-blur-xl border-t border-[#1a3322] p-6 z-50 shadow-[0_-20px_50px_-15px_rgba(0,0,0,0.9)]">
         <div className="max-w-6xl mx-auto flex flex-col gap-3 h-32 overflow-hidden relative">
           <h4 className={`text-emerald-400 font-serif italic uppercase tracking-widest text-xs flex items-center gap-2 drop-shadow-[0_0_5px_rgba(16,185,129,0.6)] transition-colors`}>

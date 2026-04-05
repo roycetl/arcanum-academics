@@ -49,6 +49,22 @@ export async function POST(req: NextRequest) {
       fs.unlinkSync(tempFilePath);
     }
 
+    // Wait for the file to become ACTIVE before using it
+    if (uploadResult.name) {
+      let fileState = uploadResult.state;
+      let attempts = 0;
+      while (fileState !== "ACTIVE" && attempts < 10) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const fileInfo = await ai.files.get({ name: uploadResult.name });
+        fileState = fileInfo.state;
+        attempts++;
+        console.log(`[Archivist] File state: ${fileState} (attempt ${attempts})`);
+      }
+      if (fileState !== "ACTIVE") {
+        throw new Error(`File processing timed out (state: ${fileState}). Try a smaller PDF.`);
+      }
+    }
+
     const response = await ai.models.generateContent({
       model: "gemini-flash-lite-latest",
       contents: [

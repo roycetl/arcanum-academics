@@ -210,7 +210,7 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
         setToastMessage(data.error);
         setCooldownSeconds(data.retryDelay || 60);
       } else {
-        setToastMessage("Upload Failed: " + data.error);
+        setToastMessage("Upload Failed: " + (data.details || data.error));
       }
     } catch (error) {
       console.error(error);
@@ -241,7 +241,7 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
         timestamp: Date.now()
       });
       setTimeout(async () => {
-        await setDoc(doc(db, "gameData", "boss"), { status: 'idle', spells: [] }, { merge: true });
+        await setDoc(doc(db, "gameData", "boss"), { status: 'idle', spells: [], hp: boss.maxHp }, { merge: true });
         setBattleLog([isWin ? `Boss Vanquished! Accuracy: ${Math.round(accuracy * 100)}% | Mastery: ${finalMastery}` : `Spell Fizzle! Accuracy: ${Math.round(accuracy * 100)}%. The Arcane Threshold was not met.`]);
       }, 1500);
     } catch(err) {
@@ -284,12 +284,14 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
     setBattleLog(prev => [newLog, ...prev].slice(0, 6));
 
     try {
-      await setDoc(doc(db, "gameData", "boss"), { hp: boss.hp - (isCorrect ? 1000 : -500) }, { merge: true });
+      const newBossHp = Math.max(0, boss.hp - (isCorrect ? Math.floor(boss.maxHp / (boss.spells?.length || 5)) : 0));
+      await setDoc(doc(db, "gameData", "boss"), { hp: newBossHp }, { merge: true });
     } catch (err) {}
 
     setTimeout(async () => {
        if (finalWizardHP <= 0) {
           setBattlePhase('FAILED');
+          try { await setDoc(doc(db, "gameData", "boss"), { hp: boss.maxHp }, { merge: true }); } catch (err) {}
        } else if (finalGoblinHP <= 0 || newAnswered >= (boss.spells?.length || ritualConfig.quantity)) {
           setBattlePhase('VICTORY');
           finalizeRaid(newAnswered, newCorrect, newMastery);
@@ -326,7 +328,7 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
     setShowRetreatModal(false);
     setBattleLog(["Royce retreated back to the Nexus. The battle is paused.", ...battleLog].slice(0, 6));
     try {
-      await setDoc(doc(db, "gameData", "boss"), { status: 'idle', spells: [] }, { merge: true });
+      await setDoc(doc(db, "gameData", "boss"), { status: 'idle', spells: [], hp: boss.maxHp }, { merge: true });
     } catch(err) {}
   };
 

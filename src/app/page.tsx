@@ -1,11 +1,11 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import DashboardClient from '../components/DashboardClient';
 import DiamondStaff from '../components/DiamondStaff';
 
 export default async function Page() {
-  // We locate the .swarm/state.json
-  const swarmStatePath = path.resolve(process.cwd(), '../.swarm/state.json');
+  const swarmStatePath = path.join(os.tmpdir(), 'state.json');
   
   let stateData = { boss: { hp: 5000, maxHp: 5000, name: "The Unknown Entity" } };
   

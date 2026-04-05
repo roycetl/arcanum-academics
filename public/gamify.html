@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arcanum Academics: Study Game</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Lora:ital,wght@0,400;0,600;1,400&display=swap"
+    rel="stylesheet">
+  <style>
+    /* =============================================
+   GLOBAL RESET & VARIABLES
+   ============================================= */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --gold: #F4D068;
+      --gold-dim: #B89947;
+      --gold-glow: rgba(244, 208, 104, 0.4);
+      --electric-blue: #4facfe;
+      --magic-purple: #9b51e0;
+      --parchment: #e8dcb8;
+      --parchment-dark: #c2b280;
+      --dark-bg: #0D111A;
+      --panel-bg: rgba(18, 22, 33, 0.95);
+      --panel-border: #8A733E;
+      --red-err: #e74c3c;
+      --green-ok: #2ecc71;
+      --font-serif: 'Cinzel', 'Georgia', serif;
+      --font-sans: 'Lora', 'Times New Roman', serif;
+      /* Using a readable serif for that 'tome' feel */
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: var(--font-sans);
+      background: var(--dark-bg);
+      color: #e0e0e0;
+    }
+
+    /* =============================================
+   MAGICAL BACKGROUND
+   ============================================= */
+    .stars-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background: url('/bg.png') center/cover no-repeat;
+      filter: brightness(0.6); /* Slightly dim so the UI remains readable */
+    }
+
+    /* =============================================
+   SCREEN MANAGEMENT
+   ============================================= */
+    .screen {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: none;
+      opacity: 0;
+      transition: opacity .5s ease;
+      overflow-y: auto;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    .screen.visible {
+      opacity: 1;
+    }
+
+    /* =============================================
+   SETUP SCREEN
+   ============================================= */
+    #setup-screen {
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 36px;
+      gap: 20px;
+    }
+
+    .setup-title {
+      font-family: var(--font-serif);
+      font-size: clamp(2rem, 5vw, 3rem);
+      color: var(--gold);
+      text-shadow: 0 0 15px var(--gold-glow), 0 4px 4px rgba(0, 0, 0, 0.8);
+      text-align: center;
+      letter-spacing: 3px;
+      flex-shrink: 0;
+      font-weight: 700;
+    }
+
+    .setup-subtitle {
+      font-family: var(--font-sans);
+      color: var(--parchment);
+      font-style: italic;
+      margin-top: -15px;
+      margin-bottom: 10px;
+      text-shadow: 0 2px 2px rgba(0, 0, 0, 0.8);
+    }
+
+    /* 3-panel grid */
+    .setup-panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    @media(max-width:900px) {
+      .setup-panels {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media(max-width:580px) {
+      .setup-panels {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .setup-panel {
+      background: var(--panel-bg);
+      border: 2px solid var(--panel-border);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(0, 0, 0, 0.4);
+      border-radius: 6px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      backdrop-filter: blur(10px);
+      position: relative;
+    }
+
+    /* Corner accents */
+    .setup-panel::before,
+    .setup-panel::after {
+      content: '';
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border: 2px solid var(--gold);
+      pointer-events: none;
+    }
+
+    .setup-panel::before {
+      top: -2px;
+      left: -2px;
+      border-right: none;
+      border-bottom: none;
+    }
+
+    .setup-panel::after {
+      bottom: -2px;
+      right: -2px;
+      border-left: none;
+      border-top: none;
+    }
+
+    .setup-panel.disabled {
+      opacity: .5;
+      filter: grayscale(50%);
+      pointer-events: none;
+    }
+
+    .panel-title {
+      font-family: var(--font-serif);
+      font-size: 1.1rem;
+      color: var(--gold);
+      border-bottom: 1px solid rgba(244, 208, 104, 0.3);
+      padding-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: 1px;
+    }
+
+    .panel-note {
+      font-size: .85rem;
+      color: #a0aabf;
+      line-height: 1.5;
+    }
+
+    /* Dropzone */
+    .dropzone {
+      background: rgba(0, 0, 0, 0.3);
+      border: 2px dashed var(--panel-border);
+      border-radius: 6px;
+      padding: 20px 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      color: #a0aabf;
+      font-size: .9rem;
+      position: relative;
+    }
+
+    .dropzone:hover,
+    .dropzone.drag-over {
+      border-color: var(--gold);
+      background: rgba(244, 208, 104, .08);
+      color: var(--parchment);
+    }
+
+    .dropzone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .dropzone-icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+      filter: drop-shadow(0 0 5px var(--gold-glow));
+    }
+
+    /* Textarea */
+    .item-textarea {
+      width: 100%;
+      background: rgba(0, 0, 0, .4);
+      border: 1px solid rgba(138, 115, 62, 0.5);
+      border-radius: 4px;
+      color: var(--parchment);
+      padding: 10px;
+      resize: vertical;
+      font-size: .9rem;
+      font-family: var(--font-sans);
+      min-height: 80px;
+      outline: none;
+      transition: border-color .2s;
+      box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+    }
+
+    .item-textarea:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 8px var(--gold-glow), inset 0 2px 5px rgba(0, 0, 0, 0.5);
+    }
+
+    .item-textarea::placeholder {
+      color: #5c677d;
+      font-style: italic;
+    }
+
+    .add-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .add-btn {
+      background: linear-gradient(180deg, #2a3441 0%, #1a202c 100%);
+      border: 1px solid var(--panel-border);
+      color: var(--gold);
+      border-radius: 4px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: .85rem;
+      font-family: var(--font-serif);
+      transition: all .2s;
+      white-space: nowrap;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    .add-btn:hover {
+      background: linear-gradient(180deg, #374457 0%, #242c3d 100%);
+      border-color: var(--gold);
+    }
+
+    .add-btn:disabled {
+      opacity: .35;
+      cursor: not-allowed;
+    }
+
+    /* Item list */
+    .item-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 80px;
+      max-height: 240px;
+      padding-right: 5px;
+    }
+
+    .item-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .item-list::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 4px;
+    }
+
+    .item-list::-webkit-scrollbar-thumb {
+      background: var(--panel-border);
+      border-radius: 4px;
+    }
+
+    .list-empty {
+      color: #5c677d;
+      font-size: .85rem;
+      text-align: center;
+      margin: auto;
+      padding: 14px;
+      font-style: italic;
+    }
+
+    .list-item {
+      background: rgba(0, 0, 0, .3);
+      border: 1px solid rgba(138, 115, 62, 0.3);
+      border-radius: 4px;
+      padding: 8px 10px;
+      font-size: .85rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .list-item-num {
+      color: var(--gold-dim);
+      font-weight: bold;
+      font-size: .8rem;
+      min-width: 24px;
+      margin-top: 2px;
+      font-family: var(--font-serif);
+    }
+
+    .list-item-body {
+      flex: 1;
+      line-height: 1.5;
+      color: #d1d8e6;
+    }
+
+    .list-item-opts {
+      color: #8b9bb4;
+      font-size: .75rem;
+      margin-top: 4px;
+    }
+
+    .list-item-del {
+      color: #e74c3c;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0 2px;
+      flex-shrink: 0;
+      text-shadow: 0 0 5px rgba(231, 76, 60, 0.5);
+    }
+
+    .list-item-del:hover {
+      color: #ff6b6b;
+    }
+
+    /* Messages */
+    .msg {
+      font-size: .85rem;
+      padding: 8px 12px;
+      border-radius: 4px;
+      display: none;
+      border-left: 3px solid transparent;
+    }
+
+    .msg.error {
+      background: rgba(231, 76, 60, .1);
+      border-color: var(--red-err);
+      color: #ff8888;
+      display: block;
+    }
+
+    .msg.info {
+      background: rgba(46, 204, 113, .1);
+      border-color: var(--green-ok);
+      color: #88ffaa;
+      display: block;
+    }
+
+    .msg.warn {
+      background: rgba(244, 208, 104, .1);
+      border-color: var(--gold);
+      color: var(--gold);
+      display: block;
+    }
+
+    /* Setup footer */
+    .setup-footer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      margin-top: 10px;
+    }
+
+    .start-btn {
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      border: 2px solid var(--gold);
+      color: var(--parchment);
+      font-size: 1.2rem;
+      font-family: var(--font-serif);
+      letter-spacing: 2px;
+      font-weight: bold;
+      padding: 16px 50px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all .3s;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(255, 255, 255, 0.1);
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    }
+
+    .start-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent);
+    }
+
+    .start-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(42, 82, 152, 0.6), 0 0 15px var(--gold-glow);
+      border-color: #fff;
+      color: #fff;
+    }
+
+    .start-btn:disabled {
+      filter: grayscale(80%);
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+      border-color: #555;
+    }
+
+    .start-btn.shake {
+      animation: shake .4s ease;
+    }
+
+    @keyframes shake {
+
+      0%,
+      100% {
+        transform: translateX(0)
+      }
+
+      20% {
+        transform: translateX(-8px)
+      }
+
+      40% {
+        transform: translateX(8px)
+      }
+
+      60% {
+        transform: translateX(-5px)
+      }
+
+      80% {
+        transform: translateX(5px)
+      }
+    }
+
+    .start-note {
+      font-size: .85rem;
+      color: #8b9bb4;
+      font-style: italic;
+    }
+
+    /* =============================================
+   GAME SCREEN
+   ============================================= */
+    #game-screen {
+      flex-direction: column;
+      background: transparent;
+    }
+
+    .game-hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 20px;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .hud-box {
+      background: var(--panel-bg);
+      border: 2px solid var(--panel-border);
+      border-radius: 4px;
+      padding: 8px 16px;
+      font-size: .95rem;
+      color: var(--parchment);
+      font-family: var(--font-serif);
+      letter-spacing: 1px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+    }
+
+    .hud-box strong {
+      color: var(--gold);
+      font-size: 1.1rem;
+      text-shadow: 0 0 5px var(--gold-glow);
+    }
+
+    /* Question card (MCQ Panel) */
+    .question-card {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--panel-bg);
+      border: 2px solid var(--gold);
+      border-radius: 6px;
+      padding: 20px 30px;
+      max-width: 700px;
+      width: calc(100% - 40px);
+      text-align: center;
+      z-index: 100;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 15px var(--gold-glow);
+      pointer-events: none;
+    }
+
+    /* Inner ornate border */
+    .question-card::before {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border: 1px solid rgba(244, 208, 104, 0.2);
+      pointer-events: none;
+    }
+
+    /* Title Tag for MCQ */
+    .question-card::after {
+      content: 'MCQ';
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--dark-bg);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-family: var(--font-serif);
+      font-size: 0.8rem;
+      padding: 2px 12px;
+      border-radius: 10px;
+      letter-spacing: 2px;
+    }
+
+    .question-text {
+      font-family: var(--font-sans);
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--parchment);
+      line-height: 1.6;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    }
+
+    /* SVG game area */
+    #game-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 50;
+      overflow: visible;
+    }
+
+    /* Plaque/Rock styles */
+    .rock-group {
+      cursor: pointer;
+    }
+
+    .rock-group:hover .rock-body {
+      filter: brightness(1.5) drop-shadow(0 0 8px var(--gold-glow));
+      stroke: #fff;
+    }
+
+    .chest-cover {
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+
+    .rock-group:not(.show-diamond):hover .chest-cover {
+      opacity: 0;
+    }
+
+    .rock-group.show-diamond .chest-cover {
+      opacity: 1 !important;
+    }
+
+    .rock-body {
+      transition: all .2s;
+    }
+
+    .rock-text {
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 600;
+      fill: var(--parchment);
+      text-anchor: middle;
+      dominant-baseline: middle;
+      pointer-events: none;
+      filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 1));
+    }
+
+    /* Lightning */
+    .lightning-path {
+      fill: none;
+      stroke: var(--electric-blue);
+      stroke-width: 4;
+      filter: drop-shadow(0 0 8px var(--electric-blue)) drop-shadow(0 0 16px #fff);
+      stroke-dasharray: 2000;
+      stroke-dashoffset: 2000;
+      animation: lightning-shoot .35s ease-out forwards;
+    }
+
+    .lightning-path-2 {
+      fill: none;
+      stroke: #fff;
+      stroke-width: 2;
+      filter: drop-shadow(0 0 5px #fff);
+      stroke-dasharray: 2000;
+      stroke-dashoffset: 2000;
+      animation: lightning-shoot .35s ease-out forwards;
+      opacity: .8;
+    }
+
+    @keyframes lightning-shoot {
+      from {
+        stroke-dashoffset: 2000
+      }
+
+      to {
+        stroke-dashoffset: 0
+      }
+    }
+
+    /* Effects */
+    .hit-flash {
+      animation: flash-fade .6s ease-out forwards;
+    }
+
+    @keyframes flash-fade {
+      0% {
+        opacity: 1;
+        r: 10px
+      }
+
+      100% {
+        opacity: 0;
+        r: 80px
+      }
+    }
+
+    .score-popup {
+      font-family: var(--font-serif);
+      font-size: 24px;
+      font-weight: bold;
+      fill: var(--green-ok);
+      text-anchor: middle;
+      filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 1));
+      animation: float-up .9s ease-out forwards;
+    }
+
+    .wrong-popup {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      fill: var(--red-err);
+      text-anchor: middle;
+      filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 1));
+      animation: float-up .9s ease-out forwards;
+    }
+
+    @keyframes float-up {
+      0% {
+        transform: translateY(0);
+        opacity: 1
+      }
+
+      100% {
+        transform: translateY(-80px);
+        opacity: 0
+      }
+    }
+
+    .fragment {
+      animation: shatter .6s ease-out forwards;
+    }
+
+    @keyframes shatter {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1) rotate(0deg)
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate(var(--dx), var(--dy)) scale(.2) rotate(45deg)
+      }
+    }
+
+    .rock-shake {
+      animation: rock-shake .4s ease;
+    }
+
+    @keyframes rock-shake {
+
+      0%,
+      100% {
+        transform: translateX(0)
+      }
+
+      20% {
+        transform: translateX(-8px)
+      }
+
+      40% {
+        transform: translateX(8px)
+      }
+
+      60% {
+        transform: translateX(-5px)
+      }
+
+      80% {
+        transform: translateX(5px)
+      }
+    }
+
+    .particle {
+      animation: particle-burst .7s ease-out forwards;
+    }
+
+    @keyframes particle-burst {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1)
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate(var(--px), var(--py)) scale(0)
+      }
+    }
+
+    /* =============================================
+   END SCREEN
+   ============================================= */
+    #end-screen {
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 40px 20px;
+      gap: 24px;
+      overflow-y: auto;
+    }
+
+    .end-title {
+      font-family: var(--font-serif);
+      font-size: clamp(2rem, 6vw, 4rem);
+      color: var(--gold);
+      text-shadow: 0 0 25px var(--gold-glow), 0 4px 10px rgba(0, 0, 0, 0.8);
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .score-display {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .score-pct {
+      font-family: var(--font-serif);
+      font-size: clamp(3rem, 8vw, 5rem);
+      font-weight: bold;
+      line-height: 1;
+    }
+
+    .score-pct.green {
+      color: var(--green-ok);
+      text-shadow: 0 0 20px rgba(46, 204, 113, .4);
+    }
+
+    .score-pct.amber {
+      color: #f1c40f;
+      text-shadow: 0 0 20px rgba(241, 196, 15, .4);
+    }
+
+    .score-pct.red {
+      color: var(--red-err);
+      text-shadow: 0 0 20px rgba(231, 76, 60, .4);
+    }
+
+    .score-raw {
+      color: var(--parchment);
+      font-size: 1.2rem;
+      font-family: var(--font-serif);
+    }
+
+    .results-table-wrap {
+      width: 100%;
+      max-width: 1000px;
+      background: var(--panel-bg);
+      border: 2px solid var(--panel-border);
+      border-radius: 6px;
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+      max-height: 50vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+    }
+
+    .results-table-wrap::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .results-table-wrap::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .results-table-wrap::-webkit-scrollbar-thumb {
+      background: var(--panel-border);
+      border-radius: 4px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .95rem;
+      font-family: var(--font-sans);
+    }
+
+    thead th {
+      background: rgba(0, 0, 0, 0.6);
+      color: var(--gold);
+      font-family: var(--font-serif);
+      padding: 14px 16px;
+      text-align: left;
+      position: sticky;
+      top: 0;
+      border-bottom: 2px solid var(--panel-border);
+      letter-spacing: 1px;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid rgba(255, 255, 255, .05);
+      transition: background 0.2s;
+    }
+
+    tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    tbody td {
+      padding: 12px 16px;
+      color: #d1d8e6;
+      vertical-align: top;
+      line-height: 1.5;
+    }
+
+    tbody tr:nth-child(even) {
+      background: rgba(0, 0, 0, .2);
+    }
+
+    tbody tr:hover {
+      background: rgba(244, 208, 104, 0.05);
+    }
+
+    .result-correct {
+      color: var(--green-ok);
+      font-size: 1.2rem;
+      font-weight: bold;
+      text-shadow: 0 0 5px rgba(46, 204, 113, 0.5);
+    }
+
+    .result-wrong {
+      color: var(--red-err);
+      font-size: 1.2rem;
+      font-weight: bold;
+      text-shadow: 0 0 5px rgba(231, 76, 60, 0.5);
+    }
+
+    .end-footer {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .play-again-btn {
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      border: 2px solid var(--gold);
+      color: var(--parchment);
+      font-size: 1.1rem;
+      font-family: var(--font-serif);
+      letter-spacing: 1px;
+      font-weight: bold;
+      padding: 14px 40px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all .3s;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    }
+
+    .play-again-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(42, 82, 152, .6), 0 0 10px var(--gold-glow);
+      border-color: #fff;
+      color: #fff;
+    }
+
+    /* =============================================
+   LOADING OVERLAY
+   ============================================= */
+    #loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      background: rgba(13, 17, 26, 0.9);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      backdrop-filter: blur(6px);
+    }
+
+    #loading-overlay.show {
+      display: flex;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(244, 208, 104, .2);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      box-shadow: 0 0 15px var(--gold-glow);
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .loading-text {
+      color: var(--gold);
+      font-family: var(--font-serif);
+      font-size: 1.2rem;
+      letter-spacing: 2px;
+      text-shadow: 0 0 8px var(--gold-glow);
+    }
+
+    /* =============================================
+   GROUND LINE
+   ============================================= */
+    .ground-line {
+      stroke: var(--panel-border);
+      stroke-width: 2;
+      opacity: 0.5;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="stars-bg"></div>
+  <div id="main-menu-screen" class="screen active visible" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; z-index: 200;">
+    <div style="text-align:center;">
+      <div class="end-title" style="margin-bottom: 10px;">Studify</div>
+    </div>
+    <button class="start-btn" id="gamify-btn" style="padding: 20px 60px; font-size: 1.8rem; margin-top: 20px;">Gamify your exam</button>
+  </div>
+  <div id="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Extracting Lore...</div>
+  </div>
+
+  <div id="setup-screen" class="screen">
+    <div style="text-align:center;">
+      <div class="setup-title">Studify</div>
+      <div class="setup-subtitle">Turn your lecture notes into legendary loot</div>
+    </div>
+
+    <div class="setup-panels">
+
+      <div class="setup-panel" id="panel-questions">
+        <div class="panel-title">📜 Tomes (Questions)</div>
+        <div class="panel-note">Upload a PDF/DOCX — questions <em>and</em> their options will be extracted
+          automatically.</div>
+
+        <div class="dropzone" id="q-dropzone">
+          <div class="dropzone-icon">📓</div>
+          <div>Drop <strong>.pdf</strong> or <strong>.docx</strong> here</div>
+          <div style="font-size:.8rem;margin-top:6px;color:#8b9bb4">click to browse archives</div>
+          <input type="file" id="q-file" accept=".pdf,.docx" aria-label="Upload questions file">
+        </div>
+
+        <div style="text-align:center;color:#5c677d;font-size:.8rem; font-style:italic;">— or inscribe below —</div>
+
+        <textarea class="item-textarea" id="q-textarea" rows="3"
+          placeholder="Type questions (numbered, one per line):&#10;1. What is the primary function of Python's __init__ method?&#10;2. Define encapsulation."></textarea>
+        <div class="add-row">
+          <button class="add-btn" id="q-add-btn">＋ Add Question(s)</button>
+          <button class="add-btn" id="q-clear-btn" style="margin-left:auto;opacity:.7">🗑 Clear</button>
+        </div>
+
+        <div id="q-msg" class="msg"></div>
+        <div style="color:#a0aabf;font-size:.85rem; font-family: var(--font-serif);">Questions: <strong id="q-count"
+            style="color:var(--gold)">0</strong></div>
+        <div class="item-list" id="q-list">
+          <div class="list-empty">The archive is empty</div>
+        </div>
+      </div>
+
+      <div class="setup-panel" id="panel-options">
+        <div class="panel-title">🔮 Illusions (Options)</div>
+        <div class="panel-note">Auto-populated from the Tome above. To add manually, paste options in groups — one blank
+          line between each question's set.</div>
+
+        <textarea class="item-textarea" id="o-textarea" rows="4"
+          placeholder="a. Constructor&#10;b. Destructor&#10;c. Initialize Object&#10;&#10;a. Option A for Q2&#10;b. Option B for Q2"></textarea>
+        <div class="add-row">
+          <button class="add-btn" id="o-add-btn">＋ Set Options</button>
+          <button class="add-btn" id="o-clear-btn" style="margin-left:auto;opacity:.7">🗑 Clear</button>
+        </div>
+
+        <div id="o-msg" class="msg"></div>
+        <div style="color:#a0aabf;font-size:.85rem; font-family: var(--font-serif);">Questions with options: <strong
+            id="o-count" style="color:var(--gold)">0</strong></div>
+        <div class="item-list" id="o-list">
+          <div class="list-empty">No illusions conjured yet</div>
+        </div>
+        <button class="add-btn" id="manual-opts-btn" style="width:100%;margin-top:4px;">✏ Manually Change Option
+          Content</button>
+      </div>
+
+      <div class="setup-panel disabled" id="panel-answers">
+        <div class="panel-title">✅ Absolute Truth (Answers)</div>
+        <div class="panel-note" id="a-panel-note">Enter one answer per line using the option letter (e.g. "a", "c"). You
+          need exactly <strong id="a-required" style="color:var(--gold)">?</strong> truths.</div>
+
+        <textarea class="item-textarea" id="a-textarea" rows="4" placeholder="c&#10;a&#10;b&#10;d" disabled></textarea>
+        <div class="add-row">
+          <button class="add-btn" id="a-add-btn" disabled>＋ Seal Truths</button>
+          <button class="add-btn" id="a-clear-btn" style="margin-left:auto;opacity:.7" disabled>🗑 Clear</button>
+        </div>
+
+        <div id="a-msg" class="msg"></div>
+        <div style="color:#a0aabf;font-size:.85rem; font-family: var(--font-serif);">Truths: <strong id="a-count"
+            style="color:var(--gold)">0</strong> / <strong id="a-total" style="color:var(--gold)">0</strong></div>
+        <div class="item-list" id="a-list">
+          <div class="list-empty">Require Tomes & Illusions first</div>
+        </div>
+      </div>
+
+    </div>
+    <div class="setup-footer">
+      <div id="start-msg" class="msg" style="text-align:center;max-width:520px;"></div>
+      <button class="start-btn" id="start-btn" disabled>Initiate Encounter</button>
+      <div class="start-note">Need ≥ 2 questions with options and matching correct answers</div>
+    </div>
+  </div>
+
+
+  <div id="game-screen" class="screen">
+    <div class="game-hud">
+      <div class="hud-box">Encounter <strong id="hud-q-num">1</strong> of <strong id="hud-q-total">?</strong></div>
+      <div class="hud-box">Score: <strong id="hud-score">0/0 (0%)</strong></div>
+    </div>
+
+    <div class="question-card">
+      <div class="question-text" id="question-text">Summoning...</div>
+    </div>
+
+    <svg id="game-svg" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="plaque-grad" cx="50%" cy="40%" r="70%">
+          <stop offset="0%" stop-color="#2a303c" />
+          <stop offset="100%" stop-color="#141820" />
+        </radialGradient>
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+        <linearGradient id="hat-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#1e293b" />
+          <stop offset="100%" stop-color="#0f172a" />
+        </linearGradient>
+        <linearGradient id="robe-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#1e3a5f" />
+          <stop offset="100%" stop-color="#0b1b36" />
+        </linearGradient>
+      </defs>
+
+      <line class="ground-line" id="ground-line" x1="0" y1="0" x2="0" y2="0" />
+
+      <g id="wizard-group">
+        <ellipse id="wiz-shadow" rx="45" ry="12" fill="rgba(0,0,0,0.6)" />
+        <image id="wiz-image" href="/witch_standing.png" />
+        <g id="wand-arm-group" style="display:none;">
+          <line id="wiz-arm" stroke="#6b513d" stroke-width="6" stroke-linecap="round" />
+          <line id="wand-shaft" stroke="#3b2716" stroke-width="4" stroke-linecap="round" />
+          <circle id="wand-tip" fill="#4facfe" r="6" filter="url(#glow)" />
+          <circle id="wand-tip-inner" fill="#ffffff" r="3" />
+        </g>
+      </g>
+
+      <g id="rocks-layer"></g>
+      <g id="effects-layer"></g>
+    </svg>
+  </div>
+
+
+  <div id="end-screen" class="screen">
+    <div class="end-title">Raid Complete!</div>
+    <div class="score-display">
+      <div class="score-pct" id="end-pct">0%</div>
+      <div class="score-raw" id="end-raw">0 / 0 Legendary Loot Acquired</div>
+    </div>
+    <div class="results-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Tome (Question)</th>
+            <th>Cast (Your Answer)</th>
+            <th>Truth (Correct Answer)</th>
+            <th>Result</th>
+          </tr>
+        </thead>
+        <tbody id="results-tbody"></tbody>
+      </table>
+    </div>
+    <div class="end-footer">
+      <button class="play-again-btn" id="play-again-btn">Start New Encounter</button>
+    </div>
+  </div>
+
+
+  <!-- Manual Options Modal -->
+  <div id="manual-opts-modal"
+    style="display:none; position:fixed; inset:0; z-index:300; background:rgba(0,0,0,0.75); align-items:center; justify-content:center; backdrop-filter:blur(4px);">
+    <div
+      style="background:var(--panel-bg); border:2px solid var(--gold); border-radius:6px; padding:24px; max-width:520px; width:90%; display:flex; flex-direction:column; gap:14px; box-shadow:0 10px 40px rgba(0,0,0,0.9);">
+      <div style="font-family:var(--font-serif); color:var(--gold); font-size:1.1rem; letter-spacing:1px;">✏ Manually
+        Set Options</div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="color:var(--parchment); font-size:.85rem;">Select Question:</label>
+        <select id="manual-q-select"
+          style="width:100%; background:rgba(0,0,0,.5); border:1px solid rgba(138,115,62,0.6); border-radius:4px; color:var(--parchment); padding:8px 10px; font-family:var(--font-sans); font-size:.9rem; outline:none;"></select>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="color:var(--parchment); font-size:.85rem;">Paste option content:</label>
+        <textarea id="manual-opts-textarea" class="item-textarea" rows="5"
+          placeholder="A. True            B. False&#10;— or —&#10;A. Option one&#10;B. Option two&#10;C. Option three"></textarea>
+      </div>
+      <div id="manual-opts-msg" class="msg"></div>
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button class="add-btn" id="manual-opts-cancel">Cancel</button>
+        <button class="add-btn" id="manual-opts-confirm" style="border-color:var(--gold); color:var(--gold);">Update
+          Options</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('gamify-btn').addEventListener('click', function() {
+      const menuScreen = document.getElementById('main-menu-screen');
+      menuScreen.classList.remove('visible');
+      setTimeout(() => {
+        menuScreen.classList.remove('active');
+        menuScreen.style.display = 'none';
+        menuScreen.style.pointerEvents = 'none';
+        const script = document.createElement('script');
+        script.src = '/api/script';
+        document.body.appendChild(script);
+      }, 500);
+    });
+  </script>
+</body>
+
+</html>

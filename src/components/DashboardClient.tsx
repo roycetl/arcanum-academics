@@ -435,16 +435,27 @@ export default function DashboardClient({ initialBossData }: { initialBossData: 
                 exit={{ opacity: 0, y: -20 }}
                 className="flex flex-col items-center gap-6 p-16 bg-zinc-900/40 rounded-3xl border border-zinc-900/50 hover:bg-zinc-900/60 transition-all backdrop-blur-sm z-30"
               >
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="group relative flex items-center gap-4 px-16 py-8 bg-gradient-to-b from-stone-800 to-stone-900 hover:from-stone-700 hover:to-stone-800 active:from-stone-900 active:to-black rounded-full border-2 border-stone-700 text-stone-200 uppercase tracking-[0.4em] font-black transition-all shadow-[0_0_50px_-5px_rgba(0,0,0,0.5)] overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/10 to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000" />
-                  <Flame className={`w-10 h-10 text-orange-500 ${uploading ? 'animate-pulse' : 'group-hover:text-orange-400 transition-colors'}`} />
-                  <span className="text-lg">{uploading ? "Forging..." : "The Sacrifice"}</span>
-                  <Upload className={`w-8 h-8 text-stone-400 ${uploading ? 'animate-bounce' : 'group-hover:-translate-y-1 transition-transform'}`} />
-                </button>
+                <div className="flex flex-col gap-4 w-full">
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="group relative flex items-center justify-center gap-4 px-16 py-6 bg-gradient-to-b from-stone-800 to-stone-900 hover:from-stone-700 hover:to-stone-800 active:from-stone-900 active:to-black rounded-full border-2 border-stone-700 text-stone-200 uppercase tracking-[0.4em] font-black transition-all shadow-[0_0_50px_-5px_rgba(0,0,0,0.5)] overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/10 to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000" />
+                    <Flame className={`w-8 h-8 text-orange-500 ${uploading ? 'animate-pulse' : 'group-hover:text-orange-400 transition-colors'}`} />
+                    <span className="text-lg">{uploading ? "Forging..." : "The Sacrifice"}</span>
+                    <Upload className={`w-6 h-6 text-stone-400 ${uploading ? 'animate-bounce' : 'group-hover:-translate-y-1 transition-transform'}`} />
+                  </button>
+                  
+                  <button 
+                    onClick={() => window.location.href='/api/gamify'}
+                    className="group relative flex items-center justify-center gap-4 px-16 py-6 w-full bg-gradient-to-b from-indigo-900/50 to-black hover:from-indigo-800/80 hover:to-black active:from-indigo-950 active:to-black rounded-full border-2 border-indigo-900 text-indigo-100 uppercase tracking-[0.4em] font-black transition-all shadow-[0_0_30px_-5px_rgba(79,70,229,0.2)] overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000" />
+                    <BookOpen className="w-8 h-8 text-indigo-400 group-hover:text-indigo-300 transition-colors" />
+                    <span className="text-lg">Upload Exam Paper</span>
+                  </button>
+                </div>
                 
                 <p className="text-zinc-500 font-mono text-sm tracking-widest text-center max-w-md">
                   {uploading ? "Identifying subject and forging related concepts..." : "Offer Grimoires (PDFs) to forge new Spell Cards and ignite the arena."}
